@@ -1,4 +1,5 @@
 #include <jeayeson/jeayeson.hpp>
+#include <cpr/cpr.h>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -100,6 +101,13 @@ private:
 	}
 };
 
+
+/* api example:
+	const std::string u{"http://oxfordhk.azure-api.net/academic/v1.0/evaluate?expr=Id=2140251882&count=10000&attributes=Id,AA.AuId,AA.AfId&subscription-key=f7cc29509a8443c5b3a5e56b0e38b5a6"};
+    auto response = cpr::Get(cpr::Url{u.c_str()});
+	std::cout << json_map{json_data{response.text}}.to_string() << std::endl;
+*/
+	
 int main(int argc, char *argv[]) {
 	unsigned short port = 2000;
 	if (argc == 2) sscanf(argv[1], "%hu", &port);
