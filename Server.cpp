@@ -93,7 +93,7 @@ private:
 
 	void rio_readline(int fd, std::string &usrbuf) {
 		while (true) {
-			char c; int rc{read(fd, &c, 1)};
+			char c; long int rc{read(fd, &c, 1)};
 			if (rc == 1) {usrbuf.push_back(c);} 
 			if (rc == 0 || c == '\n') return; // EOF
 			if (rc < 0) throw server_error("Read failed.");
