@@ -1,5 +1,5 @@
 CC 	= g++-4.9 -std=c++14
-CXXFLAG	= -O0 -Wall -Wextra -W -ggdb3 -Iinclude -L. -lcpr -lcurl
+CXXFLAG	= -O0 -Wall -Wextra -W -ggdb3
 
 Server: Server.o
 	$(CC) $^ -o $@ $(CXXFLAG)
