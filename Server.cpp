@@ -1,4 +1,5 @@
 #include <exception>
+#include <iostream>
 #include <string>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -38,19 +39,32 @@ public:
 		serveraddr.sin_addr.s_addr = htons(INADDR_ANY);
 		serveraddr.sin_port = htons(port);
 		if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
-			throw server_error("bind socket to IP:port failed.");
+			throw server_error("Bind socket to IP:port failed.");
 
 		if (listen(listenfd, LISTENQ) < 0)
 			throw server_error("Listen port failed.");
 	}
 	
-	ssize_t write_str(const std::string &str) {
-		return rio_write(connfd, str.c_str(), str.length());
-	}
-
 	std::string read_str() {
+	    struct sockaddr_in clientaddr;
+		unsigned int clientlen = sizeof(clientaddr);
+		if ((connfd = accept(listenfd, (sockaddr *)&clientaddr, &clientlen)) < 0)
+			throw server_error("Accept failed.");
+
+		/* Determine the domain name and IP address of the client */
+	    struct hostent *hp = gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr, 
+				   sizeof(clientaddr.sin_addr.s_addr), AF_INET);
+	    if (hp) throw server_error("Gethostbyaddr failed.");
+		char *haddrp = inet_ntoa(clientaddr.sin_addr);
+		printf("server connected to %s (%s)\n", hp->h_name, haddrp);
+
 		std::string buf; rio_readline(connfd, buf);
 		return std::move(buf);
+	}
+
+	ssize_t write_str(const std::string &str) {
+		ssize_t size = rio_write(connfd, str.c_str(), str.length());
+		if (close(connfd) < 0) throw server_error("Close failed."); return size;
 	}
 
 private:
@@ -70,8 +84,8 @@ private:
 	}
 
 	ssize_t rio_readline(int fd, std::string &usrbuf) {
-		unsigned num, rc; char c; 
-		while (true)
+		unsigned num = 0, rc; char c; 
+		while (true) {
 			if ((rc = read(fd, &c, 1)) == 1) {
 				usrbuf.push_back(c); if (c == '\r') break;
 			} else if (rc == 0) {
@@ -79,11 +93,21 @@ private:
 			} else {
 				throw server_error("Read failed.");
 			}
+			num++;
+		}
 		usrbuf.clear(); return num;
 	}
 };
 
 int main(int argc, char *argv[]) {
-	Server(10000);
+	try {
+		Server bop(10000);
+		while (true) {
+			std::string buf{bop.read_str()};
+			bop.write_str(buf);
+		}
+	} catch(std::exception &e) {
+		std::cout << e.what() << std::endl;
+	}
 	return 0;
 }
