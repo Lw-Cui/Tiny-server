@@ -1,3 +1,4 @@
+#include <jeayeson/jeayeson.hpp>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -100,11 +101,13 @@ private:
 };
 
 int main(int argc, char *argv[]) {
+	unsigned short port = 2000;
+	if (argc == 2) sscanf(argv[1], "%hu", &port);
 	try {
-		Server bop(10000);
+		Server bop{port};
 		while (true) {
-			std::string buf{bop.read_str()};
-			bop.write_str(buf);
+			json_map buf{json_data{bop.read_str()}};
+			bop.write_str(buf.to_string());
 		}
 	} catch(std::exception &e) {
 		std::cout << e.what() << std::endl;
