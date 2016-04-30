@@ -11,14 +11,13 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-#define LISTENQ 1024
 
 class server_error: public std::exception {
 public:
-	server_error(const char *p):str{p} {}
-	const char* what() const noexcept {return str;}
+	server_error(const std::string &p):str{p} {}
+	const char *what() const noexcept {return str.c_str();}
 private:
-	const char *str;
+	std::string str;
 };
 
 class Server {
@@ -28,7 +27,7 @@ public:
 		struct sockaddr_in serveraddr;
 
 		if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-			throw server_error("Make Socket failed.");
+			throw server_error("Socket open failed.");
 
 		if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
 			(const void *)&optval, sizeof(int)) < 0)
@@ -38,8 +37,9 @@ public:
 		serveraddr.sin_family = AF_INET;
 		serveraddr.sin_addr.s_addr = htons(INADDR_ANY);
 		serveraddr.sin_port = htons(port);
-		if (bind(listenfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
-			throw server_error("Bind socket to IP:port failed.");
+		if (bind(listenfd, reinterpret_cast<sockaddr *>(&serveraddr),
+		 sizeof(serveraddr)) < 0)
+			throw server_error("Bind socket failed.");
 
 		if (listen(listenfd, LISTENQ) < 0)
 			throw server_error("Listen port failed.");
@@ -48,30 +48,36 @@ public:
 	std::string read_str() {
 	    struct sockaddr_in clientaddr;
 		unsigned int clientlen = sizeof(clientaddr);
-		if ((connfd = accept(listenfd, (sockaddr *)&clientaddr, &clientlen)) < 0)
+		if ((connfd = accept(listenfd, 
+			reinterpret_cast<sockaddr *>(&clientaddr), &clientlen)) < 0)
 			throw server_error("Accept failed.");
 
 		/* Determine the domain name and IP address of the client */
-	    struct hostent *hp = gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr, 
-				   sizeof(clientaddr.sin_addr.s_addr), AF_INET);
-	    if (hp) throw server_error("Gethostbyaddr failed.");
+	    struct hostent *hp = gethostbyaddr(
+	    	reinterpret_cast<const char *>(&clientaddr.sin_addr.s_addr), 
+		    sizeof(clientaddr.sin_addr.s_addr), AF_INET);
+	    if (!hp) throw server_error("Gethostbyaddr failed.");
+#ifdef DEBUG
 		char *haddrp = inet_ntoa(clientaddr.sin_addr);
 		printf("server connected to %s (%s)\n", hp->h_name, haddrp);
+#endif //DEBUG
 
 		std::string buf; rio_readline(connfd, buf);
 		return std::move(buf);
 	}
 
 	ssize_t write_str(const std::string &str) {
-		ssize_t size = rio_write(connfd, str.c_str(), str.length());
-		if (close(connfd) < 0) throw server_error("Close failed."); return size;
+		ssize_t size{rio_write(connfd, str.c_str(), str.length())};
+		if (close(connfd) < 0) throw server_error("Close failed."); 
+		return size;
 	}
 
 private:
 	int listenfd, connfd;
+	static const int LISTENQ = 1024;
 
 	ssize_t rio_write(int fd, const char *usrbuf, size_t n) {
-		size_t nleft = n; ssize_t nwritten; const char *bufp = usrbuf;
+		size_t nleft{n}; ssize_t nwritten; const char *bufp{usrbuf};
 		while (nleft > 0) {
 			if ((nwritten = write(fd, bufp, nleft)) <= 0) {
 				if (errno == EINTR) nwritten = 0;
@@ -83,19 +89,13 @@ private:
 		return n;
 	}
 
-	ssize_t rio_readline(int fd, std::string &usrbuf) {
-		unsigned num = 0, rc; char c; 
+	void rio_readline(int fd, std::string &usrbuf) {
 		while (true) {
-			if ((rc = read(fd, &c, 1)) == 1) {
-				usrbuf.push_back(c); if (c == '\r') break;
-			} else if (rc == 0) {
-				if (num == 1) return 0; else break;
-			} else {
-				throw server_error("Read failed.");
-			}
-			num++;
+			char c; int rc{read(fd, &c, 1)};
+			if (rc == 1) {usrbuf.push_back(c);} 
+			if (rc == 0 || c == '\n') return; // EOF
+			if (rc < 0) throw server_error("Read failed.");
 		}
-		usrbuf.clear(); return num;
 	}
 };
 
