@@ -1,8 +1,10 @@
 #include <jeayeson/jeayeson.hpp>
-#include "restclient-cpp/restclient.h"
+#include <restclient-cpp/restclient.h>
 #include <exception>
 #include <iostream>
 #include <string>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -74,6 +76,20 @@ public:
 		return size;
 	}
 
+	void execute_CGI(const std::string &filename, const std::string &str) {
+		pid_t pid; char *const argv[] = {NULL};
+		if ((pid = fork()) == 0) {
+			setenv("JSON_STRING", str.c_str(), 1);
+			if (dup2(connfd, STDOUT_FILENO) < 0)
+				throw server_error("Dup failed.");
+			if (execve(filename.c_str(), argv, environ) < 0) 
+				throw server_error("Execve failed.");
+		} 
+		if (pid < 0) throw server_error("Fork failed."); 
+		if (wait(NULL) < 0) throw server_error("Wait failed."); 
+		if (close(connfd) < 0) throw server_error("Close failed."); 
+	}
+
 private:
 	int listenfd, connfd;
 	static const int LISTENQ = 1024;
@@ -101,20 +117,17 @@ private:
 	}
 };
 
-	
 int main(int argc, char *argv[]) {
 
-	const std::string u{"http://oxfordhk.azure-api.net/academic/v1.0/evaluate?expr=Id=2140251882&count=10000&attributes=Id,AA.AuId,AA.AfId&subscription-key=f7cc29509a8443c5b3a5e56b0e38b5a6"};
-	RestClient::Response r = RestClient::get(u.c_str());
-	std::cout << r.body << std::endl;
 
 	unsigned short port = 2000;
 	if (argc == 2) sscanf(argv[1], "%hu", &port);
 	try {
 		Server bop{port};
 		while (true) {
-			json_map buf{json_data{bop.read_str()}};
-			bop.write_str(buf.to_string());
+			//json_map buf{json_data{bop.read_str()}};
+			//bop.write_str(buf.to_string());
+			bop.execute_CGI("Algorithm", bop.read_str());
 		}
 	} catch(std::exception &e) {
 		std::cout << e.what() << std::endl;
