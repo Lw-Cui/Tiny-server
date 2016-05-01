@@ -56,12 +56,12 @@ public:
 			reinterpret_cast<sockaddr *>(&clientaddr), &clientlen)) < 0)
 			throw server_error("Accept failed.");
 
+#ifdef DEBUG
 		/* Determine the domain name and IP address of the client */
 	    struct hostent *hp = gethostbyaddr(
 	    	reinterpret_cast<const char *>(&clientaddr.sin_addr.s_addr), 
 		    sizeof(clientaddr.sin_addr.s_addr), AF_INET);
 	    if (!hp) throw server_error("Gethostbyaddr failed.");
-#ifdef DEBUG
 		char *haddrp = inet_ntoa(clientaddr.sin_addr);
 		printf("server connected to %s (%s)\n", hp->h_name, haddrp);
 #endif //DEBUG
