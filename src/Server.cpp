@@ -1,6 +1,7 @@
 #include <Server.hpp>
 
-Server::Server(unsigned short port) {
+int Server::listenfd = -1;
+void Server::StartListening(unsigned short port) {
 	int optval = 1;
 	struct sockaddr_in serveraddr;
 
@@ -22,32 +23,44 @@ Server::Server(unsigned short port) {
 	if (listen(listenfd, LISTENQ) < 0)
 		throw server_error("Listen port failed.");
 }
-	
-std::string Server::read_str() {
+
+int Server::getConnfd(unsigned short port) {
+	if (listenfd == -1) StartListening(port);
     struct sockaddr_in clientaddr;
 	unsigned int clientlen = sizeof(clientaddr);
+	int connfd = -1;
 	if ((connfd = accept(listenfd, 
 		reinterpret_cast<sockaddr *>(&clientaddr), &clientlen)) < 0)
 		throw server_error("Accept failed.");
+	return connfd;
+}
 
-#ifdef DEBUG
-	/* Determine the domain name and IP address of the client */
-    struct hostent *hp = gethostbyaddr(
-    	reinterpret_cast<const char *>(&clientaddr.sin_addr.s_addr), 
-	    sizeof(clientaddr.sin_addr.s_addr), AF_INET);
-    if (!hp) throw server_error("Gethostbyaddr failed.");
-	char *haddrp = inet_ntoa(clientaddr.sin_addr);
-	printf("server connected to %s (%s)\n", hp->h_name, haddrp);
-#endif //DEBUG
+ssize_t Server::read_str(std::string &buf) {
+	buf = read_str();
+	return buf.length();
+}
 
+std::string Server::read_str() {
 	std::string buf; rio_readline(connfd, buf);
 	return std::move(buf);
 }
 
+void Server::rio_readline(int fd, std::string &usrbuf) {
+	while (true) {
+		char c; long int rc{read(fd, &c, 1)};
+		if (rc == 1) {usrbuf.push_back(c);} 
+		if (rc == 0 || c == '\n') return; // EOF
+		if (rc < 0) throw server_error("Read failed.");
+	}
+}
+
 ssize_t Server::write_str(const std::string &str) {
 	ssize_t size{rio_write(connfd, str.c_str(), str.length())};
-	if (close(connfd) < 0) throw server_error("Close failed."); 
 	return size;
+}
+
+void Server::closeConnfd() {
+	if (close(connfd) < 0) throw server_error("Close failed."); 
 }
 
 void Server::execute_CGI(const std::string &filename, const std::string &str) {
@@ -76,13 +89,4 @@ ssize_t Server::rio_write(int fd, const char *usrbuf, size_t n) {
 		bufp += nwritten;
 	}
 	return n;
-}
-
-void Server::rio_readline(int fd, std::string &usrbuf) {
-	while (true) {
-		char c; long int rc{read(fd, &c, 1)};
-		if (rc == 1) {usrbuf.push_back(c);} 
-		if (rc == 0 || c == '\n') return; // EOF
-		if (rc < 0) throw server_error("Read failed.");
-	}
 }

@@ -26,14 +26,22 @@ private:
 
 class Server {
 public:
-	Server(unsigned short port);
-	std::string read_str();
+	Server(int cfd):connfd(cfd){}
+	ssize_t read_str(std::string &);
 	ssize_t write_str(const std::string &str);
+	void closeConnfd();
 	void execute_CGI(const std::string &filename, const std::string &str);
 
+	static int getConnfd(unsigned short);
+
 private:
-	int listenfd, connfd;
+	int connfd;
+
+	static int listenfd;
 	static const int LISTENQ = 1024;
+	static void StartListening(unsigned short);
+
+	std::string read_str();
 	ssize_t rio_write(int fd, const char *usrbuf, size_t n);
 	void rio_readline(int fd, std::string &usrbuf);
 };
