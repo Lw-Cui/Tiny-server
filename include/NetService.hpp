@@ -36,26 +36,22 @@ private:
 
 class NetService {
 public:
-	ssize_t read_str(std::string &);
-	ssize_t write_str(const std::string &str); 
+	NetService(int cfd = -1):connfd{cfd} {}
+	NetService(const NetService&) = delete;
+	NetService &operator=(const NetService&) = delete;
+	NetService(const std::string &hostname, int port):connfd{-1} {
+		open_connfd(hostname, port);}
 
-protected:
-	int connfd;
+	~NetService() {close(connfd);}
 
-private:
-	ssize_t rio_write(int fd, const char *usrbuf, size_t n);
-	void rio_readline(int fd, std::string &usrbuf);
-};
-
-class Communicator:public NetService {
-public:
-	Communicator(int cfd);
-	Communicator(const std::string &);
-	~Communicator();
-
-	void closeConnfd();
+	ssize_t read_str(std::string &str) {
+		str.clear(); rio_read(connfd, str); return str.length();}
+	NetService& write_str(const std::string &str) {rio_write(connfd, str); return *this;}
 
 private:
-	void Connect(std::string);
 	int connfd;
+
+	void open_connfd(const std::string &, int);
+	void rio_write(int fd, const std::string& usrbuf);
+	void rio_read(int fd, std::string &usrbuf);
 };
