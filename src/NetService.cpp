@@ -23,7 +23,8 @@ void NetService::open_connfd(const std::string &hostname, int port) {
 void NetService::rio_read(int fd, std::string &usrbuf) {
 	while (true) {
 		char c; long int rc{read(fd, &c, 1)};
-		if (rc == 1) {usrbuf.push_back(c);} 
+		// IMPORTANT!
+		if (rc == 1 && c != '\0') {usrbuf.push_back(c);} 
 		if (rc == 0 || c == '\0') return; // EOF
 		if (rc < 0) throw server_error("Read failed.");
 	}
