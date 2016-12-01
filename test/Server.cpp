@@ -1,26 +1,35 @@
 #include <NetService.hpp>
-#include <algorithm>
-#include <iostream>
 #include <thread>
+#include <easylogging++.h>
+#include <RWLock.hpp>
+
 using namespace std;
 
+INITIALIZE_EASYLOGGINGPP
+
 void startServe(short connfd) {
-	NetService se{connfd}; std::string buf; 
-	while (se.read_str(buf)) {
-		cout << "Recv: " << buf << endl;
-		transform(buf.begin(), buf.end(), buf.begin(), ::toupper);
-		se.write_str(buf);
-	}
+    NetService se{connfd};
+    std::string buf;
+    while (se.readStr(buf)) {
+        LOG(DEBUG) << "Recv >>" << buf << "<< from fd " << connfd;
+        transform(buf.begin(), buf.end(), buf.begin(), ::toupper);
+        se.writeStr(buf);
+    }
 }
 
 int main(int argc, char *argv[]) {
-	unsigned short port = 2000;
-	if (argc == 2) sscanf(argv[1], "%hu", &port);
-	try {
-		while(true) 
-			std::thread(startServe, Server::getConnfd(port)).detach();
-	} catch(std::exception &e) {
-		std::cout << e.what() << std::endl;
-	}
-	return 0;
+    START_EASYLOGGINGPP(argc, argv);
+    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::ToFile, "false");
+    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Format,
+                                       "[%logger] %msg [%fbase:%line]");
+
+    unsigned short port = 2000;
+    if (argc == 2) sscanf(argv[1], "%hu", &port);
+    try {
+        while (true)
+            std::thread(startServe, Server::waitConnection(port)).detach();
+    } catch (std::exception &e) {
+        std::cout << e.what() << std::endl;
+    }
+    return 0;
 }

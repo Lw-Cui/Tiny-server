@@ -1,80 +1,93 @@
 #include <NetService.hpp>
+
 using namespace std;
 
-void NetService::open_connfd(const std::string &hostname, int port) {
-	struct hostent *hp;
-	struct sockaddr_in serveraddr;
-	if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		throw server_error("Open socket error.");
+void NetService::connectServer(const std::string &hostname, int port) {
+    LOG(DEBUG) << "Opening socket descriptor.";
+    if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        throw server_error("Open socket error.");
 
-	if ((hp = gethostbyname(hostname.c_str())) == NULL)
-		throw server_error("Get hostname error.");
-	memset(reinterpret_cast<char *>(&serveraddr), 0, sizeof(serveraddr));
-	serveraddr.sin_family = AF_INET;
-	bcopy(reinterpret_cast<char *>(&serveraddr.sin_addr.s_addr),
-		reinterpret_cast<char *>(hp->h_addr_list[0]), hp->h_length);
-	serveraddr.sin_port = htons(port);
+    struct hostent *hostInfo = nullptr;
+    LOG(DEBUG) << "Parsing hostname " << hostname;
+    if ((hostInfo = gethostbyname(hostname.c_str())) == nullptr)
+        throw server_error("Get hostname error.");
 
-	if (connect(connfd, reinterpret_cast<struct sockaddr *>(&serveraddr),
-		 sizeof(serveraddr)) < 0)
-		throw server_error("connect error.");
+    struct sockaddr_in serverSocket;
+    memset(reinterpret_cast<char *>(&serverSocket), 0, sizeof(serverSocket));
+
+    serverSocket.sin_family = AF_INET;
+    bcopy(hostInfo->h_addr_list[0], reinterpret_cast<char *>(&serverSocket.sin_addr.s_addr),
+          static_cast<size_t>(hostInfo->h_length));
+    serverSocket.sin_port = htons(port);
+
+    LOG(DEBUG) << "Trying to connect server...";
+    if (connect(connfd, reinterpret_cast<struct sockaddr *>(&serverSocket), sizeof(serverSocket)) < 0)
+        throw server_error("connect error.");
+    LOG(DEBUG) << "Connect server.";
 }
 
-void NetService::rio_read(int fd, std::string &usrbuf) {
-	while (true) {
-		char c; long int rc{read(fd, &c, 1)};
-		// IMPORTANT!
-		if (rc == 1 && c != '\0') {usrbuf.push_back(c);} 
-		if (rc == 0 || c == '\0') return; // EOF
-		if (rc < 0) throw server_error("Read failed.");
-	}
+void NetService::rioRead(int fd, std::string &usrbuf) {
+    while (true) {
+        char c;
+        long int rc{read(fd, &c, 1)};
+        // IMPORTANT!
+        if (rc == 1 && c != '\0') { usrbuf.push_back(c); }
+        if (rc == 0 || c == '\0') return; // EOF
+        if (rc < 0) throw server_error("Read failed.");
+    }
 }
 
-void NetService::rio_write(int fd, const string& usrbuf) {
-	size_t nleft{usrbuf.length()}; ssize_t nwritten;
-	const char *bufp{usrbuf.c_str()};
-	while (nleft > 0) {
-		if ((nwritten = write(fd, bufp, nleft)) <= 0) {
-			if (errno == EINTR) nwritten = 0;
-			else throw server_error("Write failed.");
-		}
-		nleft -= nwritten;
-		bufp += nwritten;
-	}
-	write(fd, "\0", 1); // write EOF
+void NetService::rioWrite(int fd, const string &usrbuf) {
+    size_t nleft{usrbuf.length()};
+    ssize_t nwritten;
+    const char *bufp{usrbuf.c_str()};
+    while (nleft > 0) {
+        if ((nwritten = write(fd, bufp, nleft)) <= 0) {
+            if (errno == EINTR) nwritten = 0;
+            else throw server_error("Write failed.");
+        }
+        nleft -= nwritten;
+        bufp += nwritten;
+    }
+    write(fd, "\0", 1); // write EOF
 }
 
 int Server::listenfd = -1;
+
 void Server::Listening(unsigned short port) {
-	int optval = 1;
-	struct sockaddr_in serveraddr;
+    LOG(DEBUG) << "Open socket.";
+    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        throw server_error("Socket open failed.");
 
-	if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		throw server_error("Socket open failed.");
+    LOG(DEBUG) << "Manipulate options.";
+    int optval = 1;
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
+                   reinterpret_cast<const void *>(&optval), sizeof(int)) < 0)
+        throw server_error("Setsockopt failed.");
 
-	if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
-		(const void *)&optval, sizeof(int)) < 0)
-		throw server_error("Setsockopt failed.");
+    struct sockaddr_in clientSocket;
+    memset(&clientSocket, 0, sizeof(clientSocket));
+    clientSocket.sin_family = AF_INET;
+    clientSocket.sin_addr.s_addr = htons(INADDR_ANY);
+    LOG(DEBUG) << "Start listening port " << port;
+    clientSocket.sin_port = htons(port);
 
-	memset(&serveraddr, 0, sizeof(serveraddr));
-	serveraddr.sin_family = AF_INET;
-	serveraddr.sin_addr.s_addr = htons(INADDR_ANY);
-	serveraddr.sin_port = htons(port);
-	if (bind(listenfd, reinterpret_cast<sockaddr *>(&serveraddr),
-	 sizeof(serveraddr)) < 0)
-		throw server_error("Bind socket failed.");
+    LOG(DEBUG) << "Trying to bind client socket into file descriptor";
+    if (::bind(listenfd, reinterpret_cast<sockaddr *>(&clientSocket), sizeof(clientSocket)) < 0)
+        throw server_error("Bind socket failed.");
 
-	if (listen(listenfd, LISTENQ) < 0)
-		throw server_error("Listen port failed.");
+    LOG(DEBUG) << "Start listening.";
+    if (listen(listenfd, LISTENQ) < 0)
+        throw server_error("Listen port failed.");
 }
 
-int Server::getConnfd(unsigned short port) {
-	if (listenfd == -1) Listening(port);
-    struct sockaddr_in clientaddr;
-	unsigned int clientlen = sizeof(clientaddr);
-	int connfd = -1;
-	if ((connfd = accept(listenfd, 
-		reinterpret_cast<sockaddr *>(&clientaddr), &clientlen)) < 0)
-		throw server_error("Accept failed.");
-	return connfd;
+int Server::waitConnection(unsigned short port) {
+    if (listenfd == -1) Listening(port);
+    struct sockaddr_in clientSocket;
+    unsigned int clientlen = sizeof(clientSocket);
+    int connfd = -1;
+    if ((connfd = accept(listenfd, reinterpret_cast<sockaddr *>(&clientSocket), &clientlen)) < 0)
+        throw server_error("Accept failed.");
+    LOG(DEBUG) << "Accept connection(file descriptor): " << connfd;
+    return connfd;
 }

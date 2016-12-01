@@ -1,3 +1,5 @@
 INCLUDE_DIRECTORIES(${SERVER_INCLUDE_DIRS})
-ADD_LIBRARY(${SERVER_LIBRARIES} NetService.cpp)
-#TARGET_LINK_LIBRARIES(${SERVER_LIBRARIES})
+ADD_LIBRARY(${SERVER_LIBRARIES}
+        ../include/easylogging++.h
+        ../include/NetService.hpp
+        ../include/NetService.hpp NetService.cpp)
