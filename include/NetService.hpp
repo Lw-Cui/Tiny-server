@@ -2,6 +2,7 @@ _Pragma ("once");
 
 #include <exception>
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -23,40 +24,63 @@ void rioRead(int fd, std::string &usrbuf);
 
 void initLog(int argc, char **argv);
 
-class server_error : public std::exception {
-public:
-    server_error(const std::string &p) : str{p} {}
-
-    const char *what() const noexcept { return str.c_str(); }
-
-private:
-    std::string str;
-};
-
 
 class Server {
 public:
-    int waitConnection(unsigned short);
+    Server(int p = 2000) : port{p} {}
+
+    int waitConnection();
+
+    int Listening();
+
+    ~Server() {}
 
 private:
     const int LISTENQ = 1024;
+    int port;
 
-    void Listening(unsigned short);
-
+protected:
     int listenfd = -1;
+};
+
+class IOMultiplexingServer : public Server {
+public:
+    IOMultiplexingServer(int port) : Server{port} {
+        maxfd = listenfd = Listening();
+        maxfd++;
+        FD_ZERO(&socketSet);
+        FD_SET(listenfd, &socketSet);
+        LOG(DEBUG) << "Start IO multiplexing";
+    }
+
+    std::vector<int> getReadyClient();
+
+    std::vector<int> getClient() const {
+        return clientVec;
+    }
+
+private:
+    void addClient(int fd) {
+        FD_SET(fd, &socketSet);
+        clientVec.push_back(fd);
+        maxfd = std::max(maxfd, fd);
+    }
+
+    fd_set socketSet;
+    int maxfd;
+    // clientVec should not contain listenfd
+    std::vector<int> clientVec;
 };
 
 class Client {
 public:
-    Client(int cfd) : connfd{cfd} {}
+    Client(const std::string &hostname, int port) {
+        connectServer(hostname, port);
+    }
 
     Client(const Client &) = delete;
 
     Client &operator=(const Client &) = delete;
-
-    Client(const std::string &hostname, int port) {
-        connectServer(hostname, port);
-    }
 
     ~Client() { close(connfd); }
 
@@ -71,11 +95,37 @@ public:
         return *this;
     }
 
-private:
+protected:
     // Connection file descriptor
     int connfd = -1;
 
+private:
     void connectServer(const std::string &, int);
 
 };
 
+class IOMultiplexingClient : public Client {
+public:
+    IOMultiplexingClient(const std::string &hostname, int port) : Client{hostname, port} {
+        FD_ZERO(&socketSet);
+        FD_SET(connfd, &socketSet);
+        FD_SET(0, &socketSet);
+        LOG(DEBUG) << "Start client IO multiplexing";
+    }
+
+
+    void loop(std::function<void(const std::string &)> f);
+
+private:
+    fd_set socketSet;
+};
+
+class server_error : public std::exception {
+public:
+    server_error(const std::string &p) : str{p} {}
+
+    const char *what() const noexcept { return str.c_str(); }
+
+private:
+    std::string str;
+};

@@ -1,4 +1,5 @@
 #include <NetService.hpp>
+#include <cstdio>
 
 using namespace std;
 
@@ -61,7 +62,7 @@ void initLog(int argc, char **argv) {
 }
 
 
-void Server::Listening(unsigned short port) {
+int Server::Listening() {
     LOG(DEBUG) << "Open socket.";
     if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         throw server_error("Socket open failed.");
@@ -83,13 +84,15 @@ void Server::Listening(unsigned short port) {
     if (::bind(listenfd, reinterpret_cast<sockaddr *>(&clientSocket), sizeof(clientSocket)) < 0)
         throw server_error("Bind socket failed.");
 
-    LOG(DEBUG) << "Start listening.";
+    LOG(DEBUG) << "Start listening at port " << port;
     if (listen(listenfd, LISTENQ) < 0)
         throw server_error("Listen port failed.");
+
+    return listenfd;
 }
 
-int Server::waitConnection(unsigned short port) {
-    if (listenfd == -1) Listening(port);
+int Server::waitConnection() {
+    if (listenfd == -1) Listening();
     struct sockaddr_in clientSocket;
     unsigned int clientlen = sizeof(clientSocket);
     int connfd = -1;
@@ -97,4 +100,39 @@ int Server::waitConnection(unsigned short port) {
         throw server_error("Accept failed.");
     LOG(DEBUG) << "Accept connection(file descriptor): " << connfd;
     return connfd;
+}
+
+std::vector<int> IOMultiplexingServer::getReadyClient() {
+    std::vector<int> readyVec;
+    auto readySet = socketSet;
+    select(maxfd + 1, &readySet, NULL, NULL, NULL);
+    if (FD_ISSET(listenfd, &readySet))
+        addClient(waitConnection());
+    for (auto fd: clientVec)
+        if (FD_ISSET(fd, &readySet))
+            readyVec.push_back(fd);
+    return std::move(readyVec);
+}
+
+void IOMultiplexingClient::loop(std::function<void(const std::string &)> callback) {
+    while (true) {
+        auto readySet = socketSet;
+        select(connfd + 1, &readySet, NULL, NULL, NULL);
+        if (FD_ISSET(0, &readySet)) {
+            char tmp[100];
+            fgets(tmp, 100, stdin);
+            tmp[strlen(tmp) - 1] = 0;
+            writeStr(tmp);
+            LOG(DEBUG) << "Read stdin >>" << tmp << "<<";
+        }
+        if (FD_ISSET(connfd, &readySet)) {
+            std::string str;
+            if (!readStr(str)) {
+                LOG(DEBUG) << "Read EOF";
+                break;
+            }
+            callback(str);
+            LOG(DEBUG) << "Read notify >>" << str << "<<";
+        }
+    }
 }

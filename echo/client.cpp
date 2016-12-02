@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
         Client c{"localhost", port};
         std::string buf;
         while (getline(cin, buf)) {
-            c.writeStr(buf).readStr(buf);
+            if (!c.writeStr(buf).readStr(buf)) break;
             cout << buf << endl;
         }
     } catch (std::exception &e) {

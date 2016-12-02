@@ -1,7 +1,6 @@
 #include <NetService.hpp>
 #include <thread>
 #include <easylogging++.h>
-#include <RWLock.hpp>
 
 using namespace std;
 
@@ -19,10 +18,10 @@ int main(int argc, char *argv[]) {
     initLog(argc, argv);
     unsigned short port = 2000;
     if (argc == 2) sscanf(argv[1], "%hu", &port);
-    Server s;
+    Server s{port};
     try {
         while (true)
-            std::thread(startServe, s.waitConnection(port)).detach();
+            std::thread(startServe, s.waitConnection()).detach();
     } catch (std::exception &e) {
         std::cout << e.what() << std::endl;
     }
