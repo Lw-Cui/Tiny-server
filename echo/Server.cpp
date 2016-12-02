@@ -5,8 +5,6 @@
 
 using namespace std;
 
-INITIALIZE_EASYLOGGINGPP
-
 void startServe(short connfd) {
     NetService se{connfd};
     std::string buf;

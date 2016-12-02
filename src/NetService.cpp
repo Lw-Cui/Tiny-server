@@ -2,6 +2,8 @@
 
 using namespace std;
 
+INITIALIZE_EASYLOGGINGPP
+
 void NetService::connectServer(const std::string &hostname, int port) {
     LOG(DEBUG) << "Opening socket descriptor.";
     if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
