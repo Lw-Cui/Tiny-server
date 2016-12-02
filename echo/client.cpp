@@ -3,8 +3,6 @@
 
 using namespace std;
 
-INITIALIZE_EASYLOGGINGPP
-
 int main(int argc, char *argv[]) {
     START_EASYLOGGINGPP(argc, argv);
     el::Loggers::reconfigureAllLoggers(el::ConfigurationType::ToFile, "false");
