@@ -17,6 +17,10 @@ _Pragma ("once");
 #include <fcntl.h>
 #include <easylogging++.h>
 
+void rioWrite(int fd, const std::string &usrbuf);
+
+void rioRead(int fd, std::string &usrbuf);
+
 class server_error : public std::exception {
 public:
     server_error(const std::string &p) : str{p} {}
@@ -30,29 +34,29 @@ private:
 
 class Server {
 public:
-    static int waitConnection(unsigned short);
+    int waitConnection(unsigned short);
 
 private:
-    static const int LISTENQ = 1024;
+    const int LISTENQ = 1024;
 
-    static void Listening(unsigned short);
+    void Listening(unsigned short);
 
-    static int listenfd;
+    int listenfd = -1;
 };
 
-class NetService {
+class Client {
 public:
-    NetService(int cfd) : connfd{cfd} {}
+    Client(int cfd) : connfd{cfd} {}
 
-    NetService(const NetService &) = delete;
+    Client(const Client &) = delete;
 
-    NetService &operator=(const NetService &) = delete;
+    Client &operator=(const Client &) = delete;
 
-    NetService(const std::string &hostname, int port) {
+    Client(const std::string &hostname, int port) {
         connectServer(hostname, port);
     }
 
-    ~NetService() { close(connfd); }
+    ~Client() { close(connfd); }
 
     ssize_t readStr(std::string &str) {
         str.clear();
@@ -60,7 +64,7 @@ public:
         return str.length();
     }
 
-    NetService &writeStr(const std::string &str) {
+    Client &writeStr(const std::string &str) {
         rioWrite(connfd, str);
         return *this;
     }
@@ -71,7 +75,4 @@ private:
 
     void connectServer(const std::string &, int);
 
-    void rioWrite(int fd, const std::string &usrbuf);
-
-    void rioRead(int fd, std::string &usrbuf);
 };

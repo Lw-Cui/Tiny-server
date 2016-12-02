@@ -4,7 +4,7 @@ using namespace std;
 
 INITIALIZE_EASYLOGGINGPP
 
-void NetService::connectServer(const std::string &hostname, int port) {
+void Client::connectServer(const std::string &hostname, int port) {
     LOG(DEBUG) << "Opening socket descriptor.";
     if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         throw server_error("Open socket error.");
@@ -28,7 +28,7 @@ void NetService::connectServer(const std::string &hostname, int port) {
     LOG(DEBUG) << "Connect server.";
 }
 
-void NetService::rioRead(int fd, std::string &usrbuf) {
+void rioRead(int fd, std::string &usrbuf) {
     while (true) {
         char c;
         long int rc{read(fd, &c, 1)};
@@ -39,7 +39,7 @@ void NetService::rioRead(int fd, std::string &usrbuf) {
     }
 }
 
-void NetService::rioWrite(int fd, const string &usrbuf) {
+void rioWrite(int fd, const string &usrbuf) {
     size_t nleft{usrbuf.length()};
     ssize_t nwritten;
     const char *bufp{usrbuf.c_str()};
@@ -54,7 +54,6 @@ void NetService::rioWrite(int fd, const string &usrbuf) {
     write(fd, "\0", 1); // write EOF
 }
 
-int Server::listenfd = -1;
 
 void Server::Listening(unsigned short port) {
     LOG(DEBUG) << "Open socket.";

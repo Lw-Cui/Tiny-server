@@ -6,12 +6,12 @@
 using namespace std;
 
 void startServe(short connfd) {
-    NetService se{connfd};
     std::string buf;
-    while (se.readStr(buf)) {
+    while (rioRead(connfd, buf), !buf.empty()) {
         LOG(DEBUG) << "Recv >>" << buf << "<< from fd " << connfd;
         transform(buf.begin(), buf.end(), buf.begin(), ::toupper);
-        se.writeStr(buf);
+        rioWrite(connfd, buf);
+        buf.clear();
     }
 }
 
@@ -23,9 +23,10 @@ int main(int argc, char *argv[]) {
 
     unsigned short port = 2000;
     if (argc == 2) sscanf(argv[1], "%hu", &port);
+    Server s;
     try {
         while (true)
-            std::thread(startServe, Server::waitConnection(port)).detach();
+            std::thread(startServe, s.waitConnection(port)).detach();
     } catch (std::exception &e) {
         std::cout << e.what() << std::endl;
     }

@@ -12,10 +12,10 @@ int main(int argc, char *argv[]) {
     unsigned short port = 2000;
     if (argc == 2) sscanf(argv[1], "%hu", &port);
     try {
-        NetService se("localhost", port);
+        Client c{"localhost", port};
         std::string buf;
-        while (cin >> buf) {
-            se.writeStr(buf).readStr(buf);
+        while (getline(cin ,buf)) {
+            c.writeStr(buf).readStr(buf);
             cout << buf << endl;
         }
     } catch (std::exception &e) {
