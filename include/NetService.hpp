@@ -21,6 +21,8 @@ void rioWrite(int fd, const std::string &usrbuf);
 
 void rioRead(int fd, std::string &usrbuf);
 
+void initLog(int argc, char **argv);
+
 class server_error : public std::exception {
 public:
     server_error(const std::string &p) : str{p} {}
@@ -76,3 +78,4 @@ private:
     void connectServer(const std::string &, int);
 
 };
+

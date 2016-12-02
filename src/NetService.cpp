@@ -54,6 +54,12 @@ void rioWrite(int fd, const string &usrbuf) {
     write(fd, "\0", 1); // write EOF
 }
 
+void initLog(int argc, char **argv) {
+    START_EASYLOGGINGPP(argc, argv);
+    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::ToFile, "false");
+    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Format, "[%logger] %msg [%fbase:%line]");
+}
+
 
 void Server::Listening(unsigned short port) {
     LOG(DEBUG) << "Open socket.";

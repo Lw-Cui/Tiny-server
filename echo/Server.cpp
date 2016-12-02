@@ -16,11 +16,7 @@ void startServe(short connfd) {
 }
 
 int main(int argc, char *argv[]) {
-    START_EASYLOGGINGPP(argc, argv);
-    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::ToFile, "false");
-    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Format,
-                                       "[%logger] %msg [%fbase:%line]");
-
+    initLog(argc, argv);
     unsigned short port = 2000;
     if (argc == 2) sscanf(argv[1], "%hu", &port);
     Server s;
