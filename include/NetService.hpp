@@ -24,20 +24,26 @@ void rioRead(int fd, std::string &usrbuf);
 
 void initLog(int argc, char **argv);
 
+enum SocketType {
+    TCP = SOCK_STREAM,
+    UDP = SOCK_DGRAM,
+};
 
 class Server {
 public:
-    Server(int p = 2000) : port{p} {}
+    Server(int p = 2000, SocketType t = TCP) : port{p}, type{t} {}
 
     int waitConnection();
 
     int Listening();
+
 
     ~Server() {}
 
 private:
     const int LISTENQ = 1024;
     int port;
+    SocketType type;
 
 protected:
     int listenfd = -1;
@@ -74,7 +80,7 @@ private:
 
 class Client {
 public:
-    Client(const std::string &hostname, int port) {
+    Client(const std::string &hostname, int port, SocketType t = TCP) : type{t} {
         connectServer(hostname, port);
     }
 
@@ -95,10 +101,12 @@ public:
         return *this;
     }
 
+    int getConnfd() const { return connfd; }
+
 protected:
     // Connection file descriptor
     int connfd = -1;
-
+    SocketType type;
 private:
     void connectServer(const std::string &, int);
 

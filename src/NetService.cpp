@@ -1,5 +1,6 @@
 #include <NetService.hpp>
-#include <cstdio>
+#include <errno.h>
+#include <string.h>
 
 using namespace std;
 
@@ -7,7 +8,7 @@ INITIALIZE_EASYLOGGINGPP
 
 void Client::connectServer(const std::string &hostname, int port) {
     LOG(DEBUG) << "Opening socket descriptor.";
-    if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((connfd = socket(AF_INET, type, 0)) < 0)
         throw server_error("Open socket error.");
 
     struct hostent *hostInfo = nullptr;
@@ -47,7 +48,7 @@ void rioWrite(int fd, const string &usrbuf) {
     while (nleft > 0) {
         if ((nwritten = write(fd, bufp, nleft)) <= 0) {
             if (errno == EINTR) nwritten = 0;
-            else throw server_error("Write failed.");
+            else throw server_error(string{"Write failed: "} + strerror(errno));
         }
         nleft -= nwritten;
         bufp += nwritten;
@@ -64,7 +65,7 @@ void initLog(int argc, char **argv) {
 
 int Server::Listening() {
     LOG(DEBUG) << "Open socket.";
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((listenfd = socket(AF_INET, type, 0)) < 0)
         throw server_error("Socket open failed.");
 
     LOG(DEBUG) << "Manipulate options.";
@@ -83,16 +84,22 @@ int Server::Listening() {
     LOG(DEBUG) << "Trying to bind client socket into file descriptor";
     if (::bind(listenfd, reinterpret_cast<sockaddr *>(&clientSocket), sizeof(clientSocket)) < 0)
         throw server_error("Bind socket failed.");
+    else
+        LOG(DEBUG) << "Bind successfully";
 
-    LOG(DEBUG) << "Start listening at port " << port;
-    if (listen(listenfd, LISTENQ) < 0)
-        throw server_error("Listen port failed.");
+    if (type == TCP) {
+        LOG(DEBUG) << "Start listening at port " << port;
+        if (listen(listenfd, LISTENQ) < 0)
+            throw server_error("Listen port failed.");
+    }
 
     return listenfd;
 }
 
 int Server::waitConnection() {
     if (listenfd == -1) Listening();
+    if (type == UDP)
+        throw server_error("UDP doesn't need accept connection.");
     struct sockaddr_in clientSocket;
     unsigned int clientlen = sizeof(clientSocket);
     int connfd = -1;
@@ -136,3 +143,4 @@ void IOMultiplexingClient::loop(std::function<void(const std::string &)> callbac
         }
     }
 }
+
