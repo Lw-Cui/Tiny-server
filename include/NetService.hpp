@@ -17,10 +17,15 @@ _Pragma ("once");
 #include <errno.h>
 #include <fcntl.h>
 #include <easylogging++.h>
+#include <unordered_map>
+#include <memory>
+#include <functional>
 
 void rioWrite(int fd, const std::string &usrbuf);
 
 void rioRead(int fd, std::string &usrbuf);
+
+void err_sys(const char *fmt, ...);
 
 void initLog(int argc, char **argv);
 
@@ -37,7 +42,6 @@ public:
 
     int Listening();
 
-
     ~Server() {}
 
 private:
@@ -49,39 +53,9 @@ protected:
     int listenfd = -1;
 };
 
-class IOMultiplexingServer : public Server {
-public:
-    IOMultiplexingServer(int port) : Server{port} {
-        maxfd = listenfd = Listening();
-        maxfd++;
-        FD_ZERO(&socketSet);
-        FD_SET(listenfd, &socketSet);
-        LOG(DEBUG) << "Start IO multiplexing";
-    }
-
-    std::vector<int> getReadyClient();
-
-    std::vector<int> getClient() const {
-        return clientVec;
-    }
-
-private:
-    void addClient(int fd) {
-        FD_SET(fd, &socketSet);
-        clientVec.push_back(fd);
-        maxfd = std::max(maxfd, fd);
-    }
-
-    fd_set socketSet;
-    int maxfd;
-    // clientVec should not contain listenfd
-    std::vector<int> clientVec;
-};
-
 class Client {
 public:
-    Client(const std::string &hostname, int port, SocketType t = TCP) : type{t} {
-        connectServer(hostname, port);
+    Client(SocketType t = TCP) : type{t} {
     }
 
     Client(const Client &) = delete;
@@ -101,39 +75,39 @@ public:
         return *this;
     }
 
-    int getConnfd() const { return connfd; }
+    int connectServer(const std::string & hostname, int port);
 
-protected:
+private:
     // Connection file descriptor
     int connfd = -1;
     SocketType type;
-private:
-    void connectServer(const std::string &, int);
-
 };
 
-class IOMultiplexingClient : public Client {
+
+class IOMultiplexingUtility {
 public:
-    IOMultiplexingClient(const std::string &hostname, int port) : Client{hostname, port} {
+    IOMultiplexingUtility() {
         FD_ZERO(&socketSet);
-        FD_SET(connfd, &socketSet);
-        FD_SET(0, &socketSet);
-        LOG(DEBUG) << "Start client IO multiplexing";
     }
 
+    void addFd(int fd, std::function<void(int)> action) {
+        maxfd = fd + 1;
+        FD_SET(fd, &socketSet);
+        fdVec[fd] = action;
+    }
 
-    void loop(std::function<void(const std::string &)> f);
+    void setDefaultAction(std::function<void(int)> action) {
+        defaultAction = action;
+    }
+
+    void start();
+
+    std::vector<int> getUnspecifedFd();
 
 private:
     fd_set socketSet;
+    int maxfd;
+    std::unordered_map<int, std::function<void(int)>> fdVec;
+    std::function<void(int)> defaultAction;
 };
 
-class server_error : public std::exception {
-public:
-    server_error(const std::string &p) : str{p} {}
-
-    const char *what() const noexcept { return str.c_str(); }
-
-private:
-    std::string str;
-};
