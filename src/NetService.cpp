@@ -62,7 +62,8 @@ void initLog(int argc, char **argv) {
 }
 
 
-int Server::Listening(SocketType type) {
+int Server::Listening(int port, SocketType type) {
+    listenfd = port;
     if ((listenfd = socket(AF_INET, type, 0)) < 0)
         err_sys("Socket open failed");
 
@@ -87,7 +88,6 @@ int Server::Listening(SocketType type) {
 }
 
 int Server::waitConnection() {
-    if (listenfd == -1) Listening();
     struct sockaddr_in clientSocket;
     unsigned int clientlen = sizeof(clientSocket);
     int connfd = -1;

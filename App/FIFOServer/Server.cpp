@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     mkfifo(CLIENT_B, 0744);
     mkfifo(SERVER, 0744);
 
-    auto rfd = open(SERVER, O_RDONLY);
+    auto rfd = open(SERVER, O_RDWR);
 
     IOMultiplexingUtility io;
     io.addFd(open(CLIENT_A, O_WRONLY), nullptr);

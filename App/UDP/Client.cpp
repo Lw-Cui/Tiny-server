@@ -1,3 +1,36 @@
+/*
+#include <NetService.hpp>
+#include <easylogging++.h>
+
+using namespace std;
+
+int main(int argc, char *argv[]) {
+    initLog(argc, argv);
+
+    unsigned short port = 2000;
+    if (argc == 2) sscanf(argv[1], "%hu", &port);
+
+    Client c;
+    c.connectServer("localhost", port, UDP);
+    IOMultiplexingUtility io;
+
+    io.addFd(c.getConnfd(), [&c](int)mutable -> void {
+        char cbuf[1024];
+        memset(cbuf, 0, sizeof(cbuf));
+        read(c.getConnfd(), cbuf, 1024);
+        cout << cbuf << endl;
+    });
+
+    io.addFd(fileno(stdin), [&c](int)mutable -> void {
+        string buf;
+        getline(cin, buf);
+        write(c.getConnfd(), buf.c_str(), buf.size());
+    });
+
+    while (true) io.start();
+    return 0;
+}
+ */
 #include <NetService.hpp>
 #include <easylogging++.h>
 
@@ -9,7 +42,8 @@ int main(int argc, char *argv[]) {
     unsigned short port = 2000;
     if (argc == 2) sscanf(argv[1], "%hu", &port);
     try {
-        Client c{"localhost", port, UDP};
+        Client c;
+        c.connectServer("localhost", port, UDP);
         std::string buf;
         char cbuf[1024];
         while (getline(cin, buf)) {
@@ -21,27 +55,5 @@ int main(int argc, char *argv[]) {
     } catch (std::exception &e) {
         std::cout << e.what() << std::endl;
     }
-    return 0;
-}
-int main(int argc, char *argv[]) {
-    initLog(argc, argv);
-
-    unsigned short port = 2000;
-    if (argc == 2) sscanf(argv[1], "%hu", &port);
-
-    Client c;
-    IOMultiplexingUtility io;
-
-    io.addFd(fileno(stdin), [&c](int)mutable -> void {
-        string str;
-        cin >> str;
-        NetReadWrite::rioWrite(c.getConnfd(), str);
-    });
-    io.addFd(c.connectServer("localhost", port, UDP), [&c](int fd)mutable -> void {
-        string str;
-        if (!NetReadWrite::rioRead(c.getConnfd(), str)) err_sys("Read EOF");
-        cout << "Read notify >>" << str << "<<" << endl;
-    });
-    while (true) io.start();
     return 0;
 }

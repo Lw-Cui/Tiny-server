@@ -39,17 +39,14 @@ public:
 
 class Server {
 public:
-    Server(int p = 2000) : port{p} {}
-
     int waitConnection();
 
-    int Listening(SocketType type = TCP);
+    int Listening(int port, SocketType type = TCP);
 
     ~Server() {}
 
 private:
     const int LISTENQ = 1024;
-    int port;
 
 protected:
     int listenfd = -1;

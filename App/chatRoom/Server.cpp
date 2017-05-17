@@ -9,8 +9,8 @@ int main(int argc, char *argv[]) {
     if (argc == 2) sscanf(argv[1], "%hu", &port);
 
     IOMultiplexingUtility io;
-    Server server(port);
-    io.addFd(server.Listening(), [&io, &server](int)mutable -> void {
+    Server server;
+    io.addFd(server.Listening(port), [&io, &server](int)mutable -> void {
         io.addFd(server.waitConnection(), nullptr);
         LOG(DEBUG) << "Add new client";
     });
