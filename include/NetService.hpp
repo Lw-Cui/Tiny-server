@@ -21,10 +21,6 @@ _Pragma ("once");
 #include <memory>
 #include <functional>
 
-void rioWrite(int fd, const std::string &usrbuf);
-
-void rioRead(int fd, std::string &usrbuf);
-
 void err_sys(const char *fmt, ...);
 
 void initLog(int argc, char **argv);
@@ -34,20 +30,26 @@ enum SocketType {
     UDP = SOCK_DGRAM,
 };
 
+class NetReadWrite {
+public:
+    static void rioWrite(int fd, const std::string &usrbuf);
+
+    static size_t rioRead(int fd, std::string &usrbuf);
+};
+
 class Server {
 public:
-    Server(int p = 2000, SocketType t = TCP) : port{p}, type{t} {}
+    Server(int p = 2000) : port{p} {}
 
     int waitConnection();
 
-    int Listening();
+    int Listening(SocketType type = TCP);
 
     ~Server() {}
 
 private:
     const int LISTENQ = 1024;
     int port;
-    SocketType type;
 
 protected:
     int listenfd = -1;
@@ -55,32 +57,15 @@ protected:
 
 class Client {
 public:
-    Client(SocketType t = TCP) : type{t} {
-    }
-
-    Client(const Client &) = delete;
-
-    Client &operator=(const Client &) = delete;
-
     ~Client() { close(connfd); }
 
-    ssize_t readStr(std::string &str) {
-        str.clear();
-        rioRead(connfd, str);
-        return str.length();
-    }
+    int getConnfd() const { return connfd; }
 
-    Client &writeStr(const std::string &str) {
-        rioWrite(connfd, str);
-        return *this;
-    }
-
-    int connectServer(const std::string & hostname, int port);
+    int connectServer(const std::string &hostname, int port, SocketType type = TCP);
 
 private:
     // Connection file descriptor
     int connfd = -1;
-    SocketType type;
 };
 
 
