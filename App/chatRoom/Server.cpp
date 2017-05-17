@@ -17,9 +17,9 @@ int main(int argc, char *argv[]) {
 
     io.setDefaultAction([&io](int fd)mutable -> void {
         string str;
-        NetReadWrite::rioRead(fd, str);
+        rioRead(fd, str);
         auto client = io.getUnspecifedFd();
-        for (auto c: client) NetReadWrite::rioWrite(c, str);
+        for (auto c: client) rioWrite(c, str);
         LOG(DEBUG) << "Notify >>" << str << "<<";
     });
 

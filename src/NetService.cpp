@@ -6,7 +6,7 @@ using namespace std;
 
 INITIALIZE_EASYLOGGINGPP
 
-int Client::connectServer(const std::string &hostname, int port, SocketType type) {
+int Client::connectServer(const std::string &hostname, int port) {
     if ((connfd = socket(AF_INET, type, 0)) < 0)
         err_sys("Open socket error");
 
@@ -28,19 +28,18 @@ int Client::connectServer(const std::string &hostname, int port, SocketType type
     return connfd;
 }
 
-size_t NetReadWrite::rioRead(int fd, std::string &usrbuf) {
-    usrbuf.clear();
+void rioRead(int fd, std::string &usrbuf) {
     while (true) {
         char c;
         long int rc{read(fd, &c, 1)};
         // IMPORTANT!
-        if (rc == 1 && c != '\0') usrbuf.push_back(c);
-        if (rc == 0 || c == '\0') return usrbuf.size(); // EOF
+        if (rc == 1 && c != '\0') { usrbuf.push_back(c); }
+        if (rc == 0 || c == '\0') return; // EOF
         if (rc < 0) err_sys("Read failed");
     }
 }
 
-void NetReadWrite::rioWrite(int fd, const string &usrbuf) {
+void rioWrite(int fd, const string &usrbuf) {
     size_t nleft{usrbuf.length()};
     ssize_t nwritten;
     const char *bufp{usrbuf.c_str()};
@@ -62,7 +61,7 @@ void initLog(int argc, char **argv) {
 }
 
 
-int Server::Listening(SocketType type) {
+int Server::Listening() {
     if ((listenfd = socket(AF_INET, type, 0)) < 0)
         err_sys("Socket open failed");
 
@@ -88,6 +87,8 @@ int Server::Listening(SocketType type) {
 
 int Server::waitConnection() {
     if (listenfd == -1) Listening();
+    if (type == UDP)
+        err_sys("UDP doesn't need accept connection");
     struct sockaddr_in clientSocket;
     unsigned int clientlen = sizeof(clientSocket);
     int connfd = -1;
