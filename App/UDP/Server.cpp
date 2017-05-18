@@ -31,7 +31,8 @@ int main(int argc, char *argv[]) {
                 tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
         std::string msg{buf};
-        sendto(listenfd, msg.c_str(), msg.size(), 0, (struct sockaddr *) &addrClient, addrLen);
+        if (sendto(listenfd, msg.c_str(), msg.size(), 0, (struct sockaddr *) &addrClient, addrLen) == -1)
+            err_sys("sendto failed");
     }
     return 0;
 }

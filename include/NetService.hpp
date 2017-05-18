@@ -68,12 +68,12 @@ private:
 
 class IOMultiplexingUtility {
 public:
-    IOMultiplexingUtility() {
+    IOMultiplexingUtility(): maxfd(INT_MIN) {
         FD_ZERO(&socketSet);
     }
 
     void addFd(int fd, std::function<void(int)> action) {
-        maxfd = fd + 1;
+        maxfd = std::max(maxfd, fd);
         FD_SET(fd, &socketSet);
         fdVec[fd] = action;
     }
