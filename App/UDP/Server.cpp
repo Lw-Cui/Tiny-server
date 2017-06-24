@@ -1,6 +1,6 @@
 #include <NetService.hpp>
 #include <thread>
-#include <easylogging++.h>
+#include <log.h>
 
 using namespace std;
 

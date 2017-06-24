@@ -1,5 +1,5 @@
 #include <NetService.hpp>
-#include <easylogging++.h>
+#include <log.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>

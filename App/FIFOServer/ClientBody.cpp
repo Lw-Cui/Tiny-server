@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <string>
 #include <NetService.hpp>
+#include <log.h>
 
 using namespace std;
 #define SERVER "Server"
@@ -25,7 +26,7 @@ int main(int argc, char *argv[]) {
         LOG(DEBUG) << "Read >>" << str << "<<";
     });
 
-    while (true) io.start();
+    while (true) io.processOneRequest();
     return 0;
 }
 

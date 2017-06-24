@@ -1,5 +1,5 @@
 #include <NetService.hpp>
-#include <easylogging++.h>
+#include <log.h>
 
 using namespace std;
 
