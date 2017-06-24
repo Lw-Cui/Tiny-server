@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
         LOG(DEBUG) << "Notify >>" << str << "<<";
     });
 
-    while (true) io.start();
+    while (true) io.processOneRequest();
     return 0;
 }
 

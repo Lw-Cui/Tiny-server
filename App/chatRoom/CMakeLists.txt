@@ -1,6 +1,6 @@
 INCLUDE_DIRECTORIES(${SERVER_INCLUDE_DIRS})
 
 ADD_EXECUTABLE(chatRoomServer Server.cpp)
-ADD_EXECUTABLE(chatRoomClient client.cpp)
+ADD_EXECUTABLE(chatRoomClient client.cpp ../Cstyle/peerB.cpp)
 TARGET_LINK_LIBRARIES(chatRoomServer ${SERVER_LIBRARIES})
 TARGET_LINK_LIBRARIES(chatRoomClient ${SERVER_LIBRARIES})

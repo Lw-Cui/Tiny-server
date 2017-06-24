@@ -3948,7 +3948,7 @@ inline void FUNCTION_NAME(const T&);
         class IWorker {
         public:
             virtual ~IWorker() {}
-            virtual void start() = 0;
+            virtual void processOneRequest() = 0;
         };
 #endif // ELPP_ASYNC_LOGGING
         /// @brief Easylogging++ management storage
@@ -3989,7 +3989,7 @@ inline void FUNCTION_NAME(const T&);
                 installPerformanceTrackingCallback<base::DefaultPerformanceTrackingCallback>(std::string("DefaultPerformanceTrackingCallback"));
                 ELPP_INTERNAL_INFO(1, "Easylogging++ has been initialized");
 #if ELPP_ASYNC_LOGGING
-                m_asyncDispatchWorker->start();
+                m_asyncDispatchWorker->processOneRequest();
 #endif  // ELPP_ASYNC_LOGGING
             }
             
@@ -4327,7 +4327,7 @@ inline void FUNCTION_NAME(const T&);
                 }
             }
             
-            virtual inline void start(void) {
+            virtual inline void processOneRequest(void) {
                 base::threading::msleep(5000); // 5s (why?)
                 setContinueRunning(true);
                 std::thread t1(&AsyncDispatchWorker::run, this);

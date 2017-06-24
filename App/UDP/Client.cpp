@@ -26,6 +26,6 @@ int main(int argc, char *argv[]) {
         write(c.getConnfd(), buf.c_str(), buf.size());
     });
 
-    while (true) io.start();
+    while (true) io.processOneRequest();
     return 0;
 }

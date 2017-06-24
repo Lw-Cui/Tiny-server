@@ -1,10 +1,6 @@
 #include <NetService.hpp>
-#include <errno.h>
-#include <string.h>
 
 using namespace std;
-
-INITIALIZE_EASYLOGGINGPP
 
 int Client::connectServer(const std::string &hostname, int port, SocketType type) {
     if ((connfd = socket(AF_INET, type, 0)) < 0)
@@ -24,7 +20,6 @@ int Client::connectServer(const std::string &hostname, int port, SocketType type
 
     if (connect(connfd, reinterpret_cast<struct sockaddr *>(&serverSocket), sizeof(serverSocket)) < 0)
         err_sys("connect error");
-    LOG(DEBUG) << "Connect server.";
     return connfd;
 }
 
@@ -53,12 +48,6 @@ void NetReadWrite::rioWrite(int fd, const string &usrbuf) {
         bufp += nwritten;
     }
     write(fd, "\0", 1); // write EOF
-}
-
-void initLog(int argc, char **argv) {
-    START_EASYLOGGINGPP(argc, argv);
-    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::ToFile, "false");
-    el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Format, "[%logger] %msg [%fbase:%line]");
 }
 
 
@@ -111,13 +100,38 @@ void err_sys(const char *fmt, ...) {
     exit(1);
 }
 
-void IOMultiplexingUtility::start() {
+void CstyleNetServer::send(const std::string &hostname, int port, std::string info) {
+    auto fd = c.connectServer("localhost", port);
+    NetReadWrite::rioWrite(fd, info);
+    close(fd);
+}
+
+CstyleNetServer::CstyleNetServer(int port) {
+    io.addFd(server.Listening(port), [this](int)mutable -> void {
+        io.addFd(server.waitConnection(), nullptr);
+    });
+
+    io.setDefaultAction([this](int fd)mutable -> void {
+        NetReadWrite::rioRead(fd, buffer);
+        io.removeFd(fd);
+        close(fd);
+    });
+}
+
+std::string CstyleNetServer::receive() {
+    io.processOneRequest();
+    io.processOneRequest();
+    return buffer;
+}
+
+void IOMultiplexingUtility::processOneRequest() {
     auto readySet = socketSet;
     select(maxfd + 1, &readySet, NULL, NULL, NULL);
     for (auto &pair: fdVec)
         if (FD_ISSET(pair.first, &readySet)) {
-            if (pair.second != nullptr)pair.second(pair.first);
+            if (pair.second != nullptr) pair.second(pair.first);
             else if (defaultAction) defaultAction(pair.first);
+            break;
         }
 }
 

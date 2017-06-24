@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         for (auto c: client) NetReadWrite::rioWrite(c, str);
     });
 
-    while (true) io.start();
+    while (true) io.processOneRequest();
     return 0;
 }
 

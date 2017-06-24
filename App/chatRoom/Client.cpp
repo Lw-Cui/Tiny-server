@@ -22,6 +22,6 @@ int main(int argc, char *argv[]) {
         if (!NetReadWrite::rioRead(c.getConnfd(), str)) err_sys("Read EOF");
         cout << "Read notify >>" << str << "<<" << endl;
     });
-    while (true) io.start();
+    while (true) io.processOneRequest();
     return 0;
 }
