@@ -101,7 +101,7 @@ void err_sys(const char *fmt, ...) {
 }
 
 void CstyleNetServer::send(const std::string &hostname, int port, std::string info) {
-    auto fd = c.connectServer("localhost", port);
+    auto fd = c.connectServer(hostname, port);
     NetReadWrite::rioWrite(fd, info);
     close(fd);
 }
