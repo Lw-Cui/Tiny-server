@@ -13,6 +13,9 @@ int main(int argc, char *argv[]) {
     cout << server.receive() << endl;
     server.send("localhost", 20000, "bye!");
     server.send("localhost", 20000, "see you next time!");
+
+    while (true)
+        cout << server.receive() << endl;
     return 0;
 }
 

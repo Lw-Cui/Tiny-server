@@ -108,18 +108,13 @@ void CstyleNetServer::send(const std::string &hostname, int port, std::string in
 
 CstyleNetServer::CstyleNetServer(int port) {
     io.addFd(server.Listening(port), [this](int)mutable -> void {
-        io.addFd(server.waitConnection(), nullptr);
-    });
-
-    io.setDefaultAction([this](int fd)mutable -> void {
+        int fd = server.waitConnection();
         NetReadWrite::rioRead(fd, buffer);
-        io.removeFd(fd);
         close(fd);
     });
 }
 
 std::string CstyleNetServer::receive() {
-    io.processOneRequest();
     io.processOneRequest();
     return buffer;
 }
